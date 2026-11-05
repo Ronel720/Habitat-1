@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HABITAT-1 // NASA Deep Space Outpost Simulator</title>
+  <style>
+    :root {
+      --bg-space: #070b12;
+      --panel-bg: rgba(14, 23, 42, 0.85);
+      --panel-border: #1e293b;
+      --accent-cyan: #06b6d4;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --accent-green: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-mono: "SF Mono", "Courier New", Courier, monospace;
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(1px 1px at 20px 30px, #ffffff 100%, rgba(255,255,255,0)),
+        radial-gradient(1.5px 1.5px at 150px 180px, #ffffff 100%, rgba(255,255,255,0)),
+        radial-gradient(1px 1px at 300px 90px, #ffffff 100%, rgba(255,255,255,0)),
+        radial-gradient(2px 2px at 500px 400px, rgba(6,182,212,0.4) 100%, rgba(255,255,255,0));
+      background-repeat: repeat;
+      background-size: 600px 600px;
+    }
+
+    /* TOP STATUS BAR */
+    header {
+      background: rgba(10, 16, 30, 0.95);
+      border-bottom: 2px solid var(--accent-cyan);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nasa-insignia {
+      background: #0b3d91;
+      color: white;
+      font-weight: 900;
+      font-size: 0.85rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      letter-spacing: 1px;
+      border: 1px solid #fc3d21;
+    }
+    .mission-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-main);
+      font-family: var(--font-mono);
+    }
+    .site-selector {
+      display: flex;
+      gap: 6px;
+      background: #0f172a;
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid var(--panel-border);
+    }
+    .site-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .site-btn.active {
+      background: var(--accent-cyan);
+      color: #000;
+    }
+    .mission-clock {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: var(--accent-amber);
+    }
+
+    /* MAIN CONTAINER */
+    main {
+      flex: 1;
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 18px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 320px 1fr 340px;
+      gap: 18px;
+    }
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    /* CARD PANELS */
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--panel-border);
+      padding-bottom: 8px;
+    }
+    .panel-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* GAUGES & METERS */
+    .metric-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .metric-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .metric-value {
+      color: var(--text-main);
+      font-weight: 700;
+    }
+    .progress-bar-bg {
+      height: 10px;
+      background: #1e293b;
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 50%;
+      background: var(--accent-cyan);
+      transition: width 0.4s ease, background-color 0.3s;
+    }
+    .progress-fill.warn { background: var(--accent-amber); }
+    .progress-fill.danger { background: var(--accent-red); }
+
+    /* POWER SLIDERS */
+    .power-summary {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+      font-family: var(--font-mono);
+    }
+    .power-large {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--accent-cyan);
+    }
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #1e293b;
+    }
+    .slider-title-wrap {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+    .slider-title {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .slider-cost {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--accent-amber);
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      background: #1e293b;
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+    }
+
+    /* TELEMETRY VIEWPORT / VISUALIZATION */
+    .viewport {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      height: 220px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px;
+    }
+    .habitat-graphic {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140px;
+      height: 70px;
+      background: #334155;
+      border-radius: 70px 70px 8px 8px;
+      border: 2px solid var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--accent-cyan);
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.2);
+      transition: all 0.3s;
+    }
+    .shield-dome {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 100px;
+      border-radius: 100px 100px 0 0;
+      border: 2px dashed rgba(6, 182, 212, 0.3);
+      pointer-events: none;
+      transition: all 0.4s ease;
+    }
+    .sun-storm-indicator {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      padding: 6px 10px;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--accent-red);
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--accent-red);
+      display: none;
+      animation: pulse 1s infinite alternate;
+    }
+    @keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
+
+    /* EVENT CARD & DECISION BOX */
+    .event-card {
+      background: #0f172a;
+      border: 1px solid var(--accent-amber);
+      border-radius: 6px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .event-tag {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      color: var(--accent-amber);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .event-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .event-desc {
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: #cbd5e1;
+    }
+    .event-dataset {
+      font-size: 0.7rem;
+      font-family: var(--font-mono);
+      color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .action-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .action-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: left;
+      line-height: 1.3;
+      transition: all 0.2s;
+    }
+    .action-btn:hover {
+      background: #334155;
+      border-color: var(--accent-cyan);
+    }
+
+    /* ADVANCE BUTTON */
+    .advance-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0b1329;
+      border: 1px solid var(--panel-border);
+      padding: 12px 20px;
+      border-radius: 8px;
+    }
+    .advance-btn {
+      background: var(--accent-green);
+      color: #042f1a;
+      border: none;
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+      transition: all 0.2s;
+      font-family: var(--font-mono);
+    }
+    .advance-btn:hover {
+      background: #34d399;
+      transform: translateY(-2px);
+    }
+
+    /* LOGS AND CONSOLE */
+    .log-box {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      padding: 10px;
+      height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .log-entry {
+      color: var(--text-muted);
+      border-left: 2px solid #334155;
+      padding-left: 6px;
+    }
+    .log-entry.crit { color: var(--accent-red); border-color: var(--accent-red); }
+    .log-entry.good { color: var(--accent-green); border-color: var(--accent-green); }
+    .log-entry.info { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+
+    /* MODAL OVERLAY */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+    }
+    .modal-content {
+      background: #0f172a;
+      border: 2px solid var(--accent-red);
+      border-radius: 8px;
+      max-width: 500px;
+      width: 100%;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+    }
+    .modal-content.victory {
+      border-color: var(--accent-green);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP STATUS BAR -->
+  <header>
+    <div class="brand">
+      <div class="nasa-insignia">NASA</div>
+      <div class="mission-title">HABITAT-1 // OUTPOST CONTROLLER</div>
+    </div>
+    <div class="site-selector">
+      <button class="site-btn active" id="btn-moon" onclick="switchSite('moon')">🌙 Lunar South Pole (Artemis)</button>
+      <button class="site-btn" id="btn-mars" onclick="switchSite('mars')">🔴 Mars (Jezero Crater)</button>
+    </div>
+    <div class="mission-clock" id="mission-clock">MISSION TIME: SOL 01 | 08:00 UTC</div>
+  </header>
+
+  <!-- MAIN DASHBOARD -->
+  <main>
+    <!-- LEFT PANEL: VITALS & LIFE SUPPORT (ECLSS) -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">💧 Life Support (ECLSS)</span>
+        <span style="font-size: 0.75rem; color: var(--accent-cyan);" id="crew-count">Crew: 4 Astronauts</span>
+      </div>
+
+      <!-- Oxygen Gauge -->
+      <div class="metric-group">
+        <div class="metric-label">
+          <span>OXYGEN CONCENTRATION</span>
+          <span class="metric-value" id="val-o2">21.0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-fill" id="bar-o2" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- Carbon Dioxide Gauge -->
+      <div class="metric-group">
+        <div class="metric-label">
+          <span>CO₂ SCRUBBER LEVEL</span>
+          <span class="metric-value" id="val-co2">0.04% (Safe)</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-fill" id="bar-co2" style="width: 10%;"></div>
+        </div>
+      </div>
+
+      <!-- Water Recycle Loop -->
+      <div class="metric-group">
+        <div class="metric-label">
+          <span>RECYCLED WATER TANK</span>
+          <span class="metric-value" id="val-water">980 L</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-fill" id="bar-water" style="width: 90%;"></div>
+        </div>
+      </div>
+
+      <!-- Hydroponic Food Yield -->
+      <div class="metric-group">
+        <div class="metric-label">
+          <span>GREENHOUSE BIOMASS (OSDR-546)</span>
+          <span class="metric-value" id="val-food">85% Crop Health</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-fill" id="bar-food" style="width: 85%;"></div>
+        </div>
+      </div>
+
+      <!-- Radiation Cumulative Dose -->
+      <div class="metric-group" style="margin-top: 10px; border-top: 1px dashed var(--panel-border); padding-top: 10px;">
+        <div class="metric-label">
+          <span>CREW RAD DOSE (Career Cap: 600 mSv)</span>
+          <span class="metric-value" id="val-rad">12 mSv</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-fill" id="bar-rad" style="width: 2%; background-color: var(--accent-cyan);"></div>
+        </div>
+      </div>
+
+      <!-- Crew Morale / Cognitive Health -->
+      <div class="metric-group">
+        <div class="metric-label">
+          <span>CREW HEALTH & COGNITION (OSDR-137)</span>
+          <span class="metric-value" id="val-health">98%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-fill" id="bar-health" style="width: 98%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER PANEL: TELEMETRY & DECISIONS -->
+    <div class="panel" style="gap: 16px;">
+      <div class="panel-header">
+        <span class="panel-title">📡 Outpost Visual Telemetry</span>
+        <span class="event-dataset" id="env-status">ENVIRONMENT: NOMINAL</span>
+      </div>
+
+      <!-- Viewport Graphic -->
+      <div class="viewport" id="viewport-box">
+        <div class="sun-storm-indicator" id="storm-badge">⚠️ DONKI ALERT: CME INCOMING</div>
+        <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #64748b;" id="viewport-sub">
+          SURFACE TEMP: -20°C | DUST OPACITY (τ): 0.4
+        </div>
+        
+        <div class="shield-dome" id="shield-dome-graphic"></div>
+        <div class="habitat-graphic" id="hab-graphic">HAB-1 CORE</div>
+      </div>
+
+      <!-- Dynamic Event / Dilemma Card -->
+      <div class="event-card" id="event-card">
+        <div class="event-tag" id="event-tag">NASA DONKI REAL-DATA ALERT</div>
+        <div class="event-title" id="event-title">Solar Proton Event Detected (CME M5.4)</div>
+        <div class="event-desc" id="event-desc">
+          Space Weather Database DONKI reports an M-class Coronal Mass Ejection travelling at 920 km/s.
+          High-energy protons will hit the habitat in 6 hours. To prevent astronaut DNA damage (OSDR-379),
+          you must decide whether to route active power to magnetic deflectors or order the crew into the regolith storm shelter.
+        </div>
+        <div class="event-dataset" id="event-source">Source: NASA DONKI ID: CME-2024-10-24T08:12:00</div>
+        
+        <div class="action-btn-group" id="action-choices">
+          <button class="action-btn" onclick="resolveEvent(1)">
+            🛡️ <strong>Route +15 kW to Active Deflector Shields:</strong> Keeps hab fully operational, but drains main batteries.
+          </button>
+          <button class="action-btn" onclick="resolveEvent(2)">
+            📦 <strong>Retreat to Water-Wall Bunker:</strong> Halts all science & greenhouse lighting for 18h. Conserves power; minor crew stress.
+          </button>
+        </div>
+      </div>
+
+      <!-- Mission Log Terminal -->
+      <div class="log-box" id="log-console">
+        <div class="log-entry info">[SYSTEM INIT] Habitat operational. Kilopower nuclear reactor nominal (40 kW).</div>
+        <div class="log-entry info">[DATA] Connected to NASA DONKI & OSDR telemetry feeds.</div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: POWER BUDGET ALLOCATION (THE TRADE-OFF MATRIX) -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">⚡ Power Grid Distribution</span>
+        <span style="font-size: 0.75rem; color: var(--accent-amber);" id="power-source-desc">Kilopower Fission</span>
+      </div>
+
+      <div class="power-summary">
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">TOTAL NET POWER BALANCE</div>
+        <div class="power-large" id="power-balance">+0.0 kW</div>
+        <div style="font-size: 0.75rem; color: var(--accent-amber); margin-top: 4px;" id="battery-status">Emergency Battery: 100 kWh (100%)</div>
+      </div>
+
+      <!-- Slider 1: Life Support ECLSS -->
+      <div class="slider-row">
+        <div class="slider-title-wrap">
+          <span class="slider-title">💨 Life Support (MOXIE & Scrubbers)</span>
+          <span class="slider-cost" id="txt-pwr-eclss">14 kW</span>
+        </div>
+        <input type="range" min="0" max="25" value="14" id="range-eclss" oninput="updateSliders()">
+        <span style="font-size: 0.7rem; color: var(--text-muted);">Maintains O₂ levels & scrubs dangerous CO₂</span>
+      </div>
+
+      <!-- Slider 2: Radiation Deflectors -->
+      <div class="slider-row">
+        <div class="slider-title-wrap">
+          <span class="slider-title">🛡️ Active Shield Deflector</span>
+          <span class="slider-cost" id="txt-pwr-shield">6 kW</span>
+        </div>
+        <input type="range" min="0" max="25" value="6" id="range-shield" oninput="updateSliders()">
+        <span style="font-size: 0.7rem; color: var(--text-muted);">Blocks Galactic Cosmic Rays & solar ions</span>
+      </div>
+
+      <!-- Slider 3: Hydroponic Grow Lights -->
+      <div class="slider-row">
+        <div class="slider-title-wrap">
+          <span class="slider-title">🌱 Greenhouse LEDs (OSDR-546)</span>
+          <span class="slider-cost" id="txt-pwr-bio">10 kW</span>
+        </div>
+        <input type="range" min="0" max="20" value="10" id="range-bio" oninput="updateSliders()">
+        <span style="font-size: 0.7rem; color: var(--text-muted);">Produces food & natural psychological morale</span>
+      </div>
+
+      <!-- Slider 4: Deep Space Comms & Science -->
+      <div class="slider-row">
+        <div class="slider-title-wrap">
+          <span class="slider-title">📡 Earth Comms & Experiments</span>
+          <span class="slider-cost" id="txt-pwr-comm">10 kW</span>
+        </div>
+        <input type="range" min="0" max="15" value="10" id="range-comm" oninput="updateSliders()">
+        <span style="font-size: 0.7rem; color: var(--text-muted);">Required for mission science points & Earth telemetry</span>
+      </div>
+    </div>
+
+    <!-- BOTTOM BAR: ADVANCE SOL -->
+    <div class="advance-bar">
+      <div>
+        <div style="font-weight: 700; font-size: 0.95rem;">PLANETARY CYCLE EXECUTION</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted);">Review your power budget and decisions before committing cycle.</div>
+      </div>
+      <button class="advance-btn" onclick="advanceSol()">ADVANCE MISSION TO NEXT SOL ➔</button>
+    </div>
+  </main>
+
+  <!-- MODAL FOR GAME OVER / EDUCATIONAL DEBRIEF -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-content" id="modal-content">
+      <h2 id="modal-title" style="color: var(--accent-red); font-family: var(--font-mono);">MISSION ABORTED</h2>
+      <p id="modal-body" style="font-size: 0.9rem; line-height: 1.5; color: #cbd5e1;">Mission failure details.</p>
+      <div style="text-align: left; background: #020617; padding: 12px; border-radius: 6px; font-size: 0.75rem; font-family: var(--font-mono);" id="modal-science">
+        <strong>NASA SCIENCE DEBRIEF:</strong>
+      </div>
+      <button class="advance-btn" style="background: var(--accent-cyan); color: #000;" onclick="restartGame()">RESTART MISSION</button>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       AUDIO SYNTHESIZER (Web Audio API - Zero External Dependencies)
+       ========================================================================= */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(freq = 440, type = "sine", duration = 0.08) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    }
+    function playAlarm() {
+      playBeep(880, "sawtooth", 0.2);
+      setTimeout(() => playBeep(660, "sawtooth", 0.2), 150);
+    }
+
+    /* =========================================================================
+       SIMULATION STATE & NASA DATA MODELS
+       ========================================================================= */
+    const state = {
+      site: 'moon', // 'moon' or 'mars'
+      sol: 1,
+      crew: 4,
+      totalGeneration: 40.0, // kW from Kilopower Reactor + Solar
+      batteryKWh: 100.0,
+      maxBatteryKWh: 100.0,
+      
+      // Allocations (kW)
+      pwrEclss: 14,
+      pwrShield: 6,
+      pwrBio: 10,
+      pwrComm: 10,
+
+      // Vitals
+      o2Level: 21.0,         // Target: 20.9 - 21.5%
+      co2Level: 0.04,        // Danger at > 0.5%
+      waterLiters: 980,      // Max: 1000 L
+      cropHealth: 85,        // 0 - 100%
+      radDoseTotal: 12.0,    // mSv (Cumulative)
+      crewHealth: 98,        // 0 - 100%
+      scienceScore: 0,
+      
+      // Events
+      currentEvent: null,
+      activeDustStorm: false
+    };
+
+    /* Real Curated NASA DONKI & OSDR Scenarios */
+    const historicalNASAEvents = [
+      {
+        id: "DONKI_CME_01",
+        tag: "NASA DONKI SPACE WEATHER ALERT",
+        title: "Fast Coronal Mass Ejection (X2.1 Flare)",
+        desc: "Solar telescope SOHO/LASCO detects a halo CME erupted toward our planetary vector at 1,200 km/s. Unshielded radiation dose will spike by +120 mSv.",
+        dataset: "NASA DONKI API // Event: CME-2023-04-21T18:00:00",
+        options: [
+          {
+            text: "🛡️ Divert Extra Battery Power to Magnetic Shield (+12 kW)",
+            costKw: 12,
+            resolve: () => {
+              state.radDoseTotal += 2.5;
+              state.batteryKWh = Math.max(0, state.batteryKWh - 15);
+              log("Active shields deflected 98% of solar proton flux. Battery took heavy drain.", "good");
+            }
+          },
+          {
+            text: "🧗 Evacuate Crew to Regolith Cave Bunker (Zero Power Added)",
+            costKw: 0,
+            resolve: () => {
+              state.radDoseTotal += 14.0;
+              state.crewHealth -= 8;
+              state.scienceScore -= 5;
+              log("Crew endured tight bunker confinement. Elevated radiation absorbed (OSDR-379 markers present).", "crit");
+            }
+          }
+        ]
+      },
+      {
+        id: "OSDR_BIO_01",
+        tag: "NASA OSDR PLANT BIOLOGY EXPERIMENT",
+        title: "Greenhouse Hypobaric Chlorosis Detected",
+        desc: "Leaf tissue sensors reveal light stress in Arabidopsis crops under hypobaric atmospheric pressures (OSDR-546). Photosynthesis is slowing.",
+        dataset: "NASA Open Science Data Repository // Study: OSD-546",
+        options: [
+          {
+            text: "💡 Boost LED PAR Light Spectrum (Requires +6 kW)",
+            costKw: 6,
+            resolve: () => {
+              state.cropHealth = Math.min(100, state.cropHealth + 12);
+              state.batteryKWh = Math.max(0, state.batteryKWh - 8);
+              log("Chlorosis reversed! Biomass yield rising steadily.", "good");
+            }
+          },
+          {
+            text: "💧 Ration Water and Accept 20% Crop Die-Off",
+            costKw: 0,
+            resolve: () => {
+              state.cropHealth -= 20;
+              state.crewHealth -= 5;
+              log("Crop mortality increased. Shelf-stable rations deployed. Crew morale dampened.", "crit");
+            }
+          }
+        ]
+      },
+      {
+        id: "MARS_PDS_DUST",
+        tag: "PLANETARY DATA SYSTEM // WEATHER",
+        title: "Regional Dust Opacity Spike (τ = 3.8)",
+        desc: "A massive atmospheric dust front obscures the horizon. Solar panel generation drops by 70% for the next 2 Sols.",
+        dataset: "NASA Mars InSight & Curiosity REMS Sensor Network",
+        options: [
+          {
+            text: "⚡ Shut Down Comms & Deep Research to Protect ECLSS",
+            costKw: 0,
+            resolve: () => {
+              state.scienceScore = Math.max(0, state.scienceScore - 10);
+              log("Scientific comms shut down. Basic life support preserved during brownout.", "info");
+            }
+          },
+          {
+            text: "🔋 Draw Deep on Emergency Fuel Cells (-30 kWh)",
+            costKw: 0,
+            resolve: () => {
+              state.batteryKWh = Math.max(0, state.batteryKWh - 30);
+              log("Emergency batteries sustained full operations through the dust front.", "info");
+            }
+          }
+        ]
+      }
+    ];
+
+    /* =========================================================================
+       CORE GAME LOGIC & TRADE-OFF MATH
+       ========================================================================= */
+    function updateSliders() {
+      playBeep(520, "sine", 0.04);
+      state.pwrEclss = parseInt(document.getElementById('range-eclss').value);
+      state.pwrShield = parseInt(document.getElementById('range-shield').value);
+      state.pwrBio = parseInt(document.getElementById('range-bio').value);
+      state.pwrComm = parseInt(document.getElementById('range-comm').value);
+
+      document.getElementById('txt-pwr-eclss').innerText = `${state.pwrEclss} kW`;
+      document.getElementById('txt-pwr-shield').innerText = `${state.pwrShield} kW`;
+      document.getElementById('txt-pwr-bio').innerText = `${state.pwrBio} kW`;
+      document.getElementById('txt-pwr-comm').innerText = `${state.pwrComm} kW`;
+
+      // Update shield graphic visual
+      const shieldDome = document.getElementById('shield-dome-graphic');
+      const opacity = state.pwrShield / 25;
+      shieldDome.style.borderColor = `rgba(6, 182, 212, ${opacity * 0.9})`;
+      shieldDome.style.boxShadow = `0 0 ${state.pwrShield * 2}px rgba(6, 182, 212, ${opacity * 0.7})`;
+
+      calcPowerBalance();
+    }
+
+    function calcPowerBalance() {
+      const consumed = state.pwrEclss + state.pwrShield + state.pwrBio + state.pwrComm;
+      const balance = state.totalGeneration - consumed;
+      const balEl = document.getElementById('power-balance');
+
+      if (balance >= 0) {
+        balEl.innerText = `+${balance.toFixed(1)} kW Surplus`;
+        balEl.style.color = "var(--accent-cyan)";
+      } else {
+        balEl.innerText = `${balance.toFixed(1)} kW Deficit (Battery Drain)`;
+        balEl.style.color = "var(--accent-red)";
+      }
+      return balance;
+    }
+
+    function switchSite(site) {
+      playBeep(600, "square", 0.08);
+      state.site = site;
+      document.getElementById('btn-moon').classList.toggle('active', site === 'moon');
+      document.getElementById('btn-mars').classList.toggle('active', site === 'mars');
+
+      if (site === 'moon') {
+        state.totalGeneration = 40.0; // Kilopower baseline
+        document.getElementById('power-source-desc').innerText = "Kilopower Nuclear (40 kW continuous)";
+        document.getElementById('viewport-box').style.background = "#05070e";
+        document.getElementById('hab-graphic').innerText = "ARTEMIS BASE";
+        document.getElementById('viewport-sub').innerText = "LUNAR NIGHT TEMP: -170°C | ILLUMINATION: 12%";
+        log("[ENVIRONMENT] Switched to Artemis Base Camp (Lunar South Pole). Deep vacuum. 1.3s Comms Lag.", "info");
+      } else {
+        state.totalGeneration = 36.0; // Mars solar + MMRTG
+        document.getElementById('power-source-desc').innerText = "Solar Array + MMRTG (Variable Dust)";
+        document.getElementById('viewport-box').style.background = "#1a0b08";
+        document.getElementById('hab-graphic').innerText = "JEZERO BASE";
+        document.getElementById('viewport-sub').innerText = "MARS AMBIENT TEMP: -60°C | ATMOSPHERE: 6.1 mbar CO₂";
+        log("[ENVIRONMENT] Switched to Ares Base (Mars Jezero). Thin CO₂ atmosphere. 14 min Comms Lag.", "info");
+      }
+      calcPowerBalance();
+    }
+
+    function log(message, type = "info") {
+      const consoleBox = document.getElementById('log-console');
+      const entry = document.createElement('div');
+      entry.className = `log-entry ${type}`;
+      entry.innerText = `[SOL ${String(state.sol).padStart(2,'0')}] ${message}`;
+      consoleBox.prepend(entry);
+    }
+
+    function resolveEvent(choiceIndex) {
+      playBeep(700, "triangle", 0.1);
+      if (!state.currentEvent) return;
+      const selected = state.currentEvent.options[choiceIndex - 1];
+      selected.resolve();
+      document.getElementById('event-card').style.display = 'none';
+      state.currentEvent = null;
+      renderVitals();
+      checkDefeatConditions();
+    }
+
+    /* Sol Progression: Evaluates continuous differential trade-offs */
+    function advanceSol() {
+      playBeep(800, "sine", 0.15);
+      state.sol++;
+      document.getElementById('mission-clock').innerText = `MISSION TIME: SOL ${String(state.sol).padStart(2,'0')} | 08:00 UTC`;
+
+      // 1. Power & Battery calculation
+      const netPower = calcPowerBalance();
+      state.batteryKWh += (netPower * 24); // 24 hours per Sol cycle
+      if (state.batteryKWh > state.maxBatteryKWh) state.batteryKWh = state.maxBatteryKWh;
+      
+      const isBrownout = state.batteryKWh <= 0;
+      if (isBrownout) {
+        state.batteryKWh = 0;
+        playAlarm();
+        log("BROWNOUT EMERGENCY! Batteries drained to zero. Non-essential systems cut!", "crit");
+      }
+
+      // 2. ECLSS Life Support Mechanics
+      if (state.pwrEclss >= 14 && !isBrownout) {
+        state.o2Level = Math.min(21.2, state.o2Level + 0.1);
+        state.co2Level = Math.max(0.04, state.co2Level - 0.05);
+        state.waterLiters = Math.max(100, state.waterLiters - (state.crew * 1.5)); // Efficient water recycle
+      } else {
+        // Under-powered life support
+        const o2Loss = (14 - state.pwrEclss) * 0.25;
+        const co2Gain = (14 - state.pwrEclss) * 0.08;
+        state.o2Level -= o2Loss;
+        state.co2Level += co2Gain;
+        state.crewHealth -= Math.round(co2Gain * 25);
+        log(`Life support starved! O₂ fell to ${state.o2Level.toFixed(1)}%, CO₂ rose to ${state.co2Level.toFixed(2)}%.`, "crit");
+      }
+
+      // 3. Radiation & Active Shielding
+      // Real physics: Galactic cosmic rays provide baseline background ~1.5 mSv/sol unshielded
+      const ambientGCR = 1.6;
+      const shieldFactor = Math.max(0.1, 1 - (state.pwrShield / 25));
+      const dailyDose = ambientGCR * shieldFactor;
+      state.radDoseTotal += dailyDose;
+
+      if (state.pwrShield < 4) {
+        state.crewHealth -= 2;
+        log(`Insufficient active shielding. Astronauts absorbed +${dailyDose.toFixed(2)} mSv cosmic radiation.`, "crit");
+      }
+
+      // 4. Botanical Greenhouse (OSDR Plant Biology)
+      if (state.pwrBio >= 10 && !isBrownout) {
+        state.cropHealth = Math.min(100, state.cropHealth + 3);
+        state.crewHealth = Math.min(100, state.crewHealth + 1); // Psychological boost from fresh salad
+      } else {
+        const cropDrop = (10 - state.pwrBio) * 3;
+        state.cropHealth = Math.max(0, state.cropHealth - cropDrop);
+        if (state.cropHealth < 40) {
+          state.crewHealth -= 6;
+          log("Severe crop wilting in Hydroponic Bay (OSDR-546). Dietary calorie stress begins.", "crit");
+        }
+      }
+
+      // 5. Science & Communications
+      if (state.pwrComm >= 8 && !isBrownout) {
+        state.scienceScore += 10;
+        log(`Downlinked 450 GB telemetry to NASA Ground Station. Scientific score +10.`, "good");
+      } else {
+        log(`Earth communications dark due to low power allocation. Zero data transmitted.`, "info");
+      }
+
+      // 6. Dynamic Event Engine (Every 2-3 Sols)
+      if (state.sol % 2 === 0 && !state.currentEvent) {
+        triggerRandomEvent();
+      }
+
+      renderVitals();
+      checkDefeatConditions();
+    }
+
+    function triggerRandomEvent() {
+      const evt = historicalNASAEvents[Math.floor(Math.random() * historicalNASAEvents.length)];
+      state.currentEvent = evt;
+
+      document.getElementById('event-card').style.display = 'flex';
+      document.getElementById('event-tag').innerText = evt.tag;
+      document.getElementById('event-title').innerText = evt.title;
+      document.getElementById('event-desc').innerText = evt.desc;
+      document.getElementById('event-source').innerText = evt.dataset;
+
+      const btnContainer = document.getElementById('action-choices');
+      btnContainer.innerHTML = '';
+      evt.options.forEach((opt, idx) => {
+        const b = document.createElement('button');
+        b.className = 'action-btn';
+        b.innerHTML = opt.text;
+        b.onclick = () => resolveEvent(idx + 1);
+        btnContainer.appendChild(b);
+      });
+
+      // Show indicator
+      if (evt.id.includes("DONKI")) {
+        playAlarm();
+        document.getElementById('storm-badge').style.display = 'block';
+      }
+    }
+
+    function renderVitals() {
+      // Oxygen
+      document.getElementById('val-o2').innerText = `${state.o2Level.toFixed(1)}%`;
+      const o2Bar = document.getElementById('bar-o2');
+      o2Bar.style.width = `${Math.min(100, (state.o2Level / 21) * 100)}%`;
+      o2Bar.className = `progress-fill ${state.o2Level < 18 ? 'danger' : (state.o2Level < 19.5 ? 'warn' : '')}`;
+
+      // CO2
+      document.getElementById('val-co2').innerText = `${state.co2Level.toFixed(2)}% (${state.co2Level > 0.3 ? 'TOXIC' : 'Safe'})`;
+      const co2Bar = document.getElementById('bar-co2');
+      co2Bar.style.width = `${Math.min(100, (state.co2Level / 0.8) * 100)}%`;
+      co2Bar.className = `progress-fill ${state.co2Level > 0.4 ? 'danger' : (state.co2Level > 0.2 ? 'warn' : '')}`;
+
+      // Radiation
+      document.getElementById('val-rad').innerText = `${state.radDoseTotal.toFixed(1)} mSv`;
+      const radBar = document.getElementById('bar-rad');
+      const radPercent = (state.radDoseTotal / 600) * 100;
+      radBar.style.width = `${Math.min(100, radPercent)}%`;
+      radBar.className = `progress-fill ${radPercent > 50 ? 'danger' : (radPercent > 20 ? 'warn' : '')}`;
+
+      // Crops
+      document.getElementById('val-food').innerText = `${state.cropHealth}% Health`;
+      document.getElementById('bar-food').style.width = `${state.cropHealth}%`;
+
+      // Health
+      document.getElementById('val-health').innerText = `${state.crewHealth}%`;
+      const healthBar = document.getElementById('bar-health');
+      healthBar.style.width = `${state.crewHealth}%`;
+      healthBar.className = `progress-fill ${state.crewHealth < 40 ? 'danger' : (state.crewHealth < 70 ? 'warn' : '')}`;
+
+      // Battery
+      const batteryPercent = (state.batteryKWh / state.maxBatteryKWh) * 100;
+      document.getElementById('battery-status').innerText = `Emergency Battery: ${state.batteryKWh.toFixed(0)} kWh (${batteryPercent.toFixed(0)}%)`;
+    }
+
+    function checkDefeatConditions() {
+      let failed = false;
+      let reason = "";
+      let scienceNote = "";
+
+      if (state.o2Level < 14.0) {
+        failed = true;
+        reason = "CRITICAL HYPOXIA: Oxygen levels dropped below survivable human limits (14%).";
+        scienceNote = "NASA ECLSS data shows humans need at least 16-19.5% atmospheric O₂ at habitat pressures. When power to water electrolysis (MOXIE) was diverted, the life support loop starved.";
+      } else if (state.co2Level > 0.6) {
+        failed = true;
+        reason = "CARBON DIOXIDE TOXICITY (HYPERCAPNIA): Scrubbers failed to remove exhaled CO₂.";
+        scienceNote = "In space habitats, CO₂ accumulation is more immediately fatal than running out of oxygen. At >0.5%, crew suffers severe headache, dizziness, and cognitive failure.";
+      } else if (state.radDoseTotal > 600) {
+        failed = true;
+        reason = "MAXIMUM CAREER RADIATION LIMIT EXCEEDED (>600 mSv).";
+        scienceNote = "NASA limits total career radiation exposure to prevent terminal leukemia and DNA damage (OSDR-137). Without power to deflectors or regolith bunker shelters, galactic cosmic rays overwhelmed crew cells.";
+      } else if (state.crewHealth <= 0) {
+        failed = true;
+        reason = "CREW MORALE & PHYSIOLOGICAL COLLAPSE.";
+        scienceNote = "Combined sleep deprivation, high radiation, lack of fresh food (crop death), and brownout cold caused crew system collapse.";
+      } else if (state.sol >= 15) {
+        // VICTORY!
+        showModal(true, "MISSION SUCESS: 15 SOLS SURVIVED!", 
+          `Congratulations Commander! You balanced power, life support, radiation defense, and food production through 15 harsh cycles. Science Points Earned: ${state.scienceScore}`,
+          "You demonstrated authentic aerospace engineering trade-offs: every watt diverted to radiation shields protected crew genes, while preserving enough life support loop continuity to keep the habitat pressurized and safe.");
+        return;
+      }
+
+      if (failed) {
+        playAlarm();
+        showModal(false, "MISSION ABORTED // CRITICAL FAILURE", reason, scienceNote);
+      }
+    }
+
+    function showModal(isVictory, title, body, science) {
+      const modal = document.getElementById('modal');
+      const content = document.getElementById('modal-content');
+      modal.style.display = 'flex';
+      content.className = `modal-content ${isVictory ? 'victory' : ''}`;
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-title').style.color = isVictory ? "var(--accent-green)" : "var(--accent-red)";
+      document.getElementById('modal-body').innerText = body;
+      document.getElementById('modal-science').innerHTML = `<strong>NASA ENGINEERING TAKEAWAY:</strong><br>${science}`;
+    }
+
+    function restartGame() {
+      state.sol = 1;
+      state.batteryKWh = 100;
+      state.o2Level = 21.0;
+      state.co2Level = 0.04;
+      state.waterLiters = 980;
+      state.cropHealth = 85;
+      state.radDoseTotal = 12.0;
+      state.crewHealth = 98;
+      state.scienceScore = 0;
+      state.currentEvent = null;
+      document.getElementById('modal').style.display = 'none';
+      document.getElementById('event-card').style.display = 'none';
+      document.getElementById('storm-badge').style.display = 'none';
+      log("[MISSION REBOOT] Outpost systems re-initialized. Ready for command.", "good");
+      updateSliders();
+      renderVitals();
+    }
+
+    // Initialize on load
+    window.onload = () => {
+      updateSliders();
+      renderVitals();
+    };
+  </script>
+</body>
+</html>
